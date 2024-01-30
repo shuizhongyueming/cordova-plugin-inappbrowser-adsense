@@ -101,6 +101,7 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String LOAD_STOP_EVENT = "loadstop";
     private static final String LOAD_ERROR_EVENT = "loaderror";
     private static final String DOWNLOAD_EVENT = "download";
+    private static final String BACKBUTTON_EVENT = "backbutton";
     private static final String MESSAGE_EVENT = "message";
     private static final String CLEAR_ALL_CACHE = "clearcache";
     private static final String CLEAR_SESSION_CACHE = "clearsessioncache";
@@ -565,6 +566,22 @@ public class InAppBrowser extends CordovaPlugin {
     public void goBack() {
         if (this.inAppWebView.canGoBack()) {
             this.inAppWebView.goBack();
+        }
+    }
+
+    /**
+     * handle the hardware back button press
+     */
+    public void hanldeBackbutton() {
+        LOG.d(LOG_TAG, "hanldeBackbutton is called");
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", BACKBUTTON_EVENT);
+            obj.put("url", this.inAppWebView.getUrl());
+
+            sendUpdate(obj, true);
+        } catch (JSONException ex) {
+            LOG.d(LOG_TAG, "Should never happen");
         }
     }
 
