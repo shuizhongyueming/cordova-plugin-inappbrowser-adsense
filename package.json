@@ -1,7 +1,7 @@
 {
-  "name": "cordova-plugin-inappbrowser",
-  "version": "6.0.1-dev",
-  "description": "Cordova InAppBrowser Plugin",
+  "name": "cordova-plugin-inappbrowser-adsense",
+  "version": "0.1.0",
+  "description": "Extend Cordova InAppBrowser Plugin with AdSense Display Support",
   "types": "./types/index.d.ts",
   "cordova": {
     "id": "cordova-plugin-inappbrowser",
@@ -11,8 +11,8 @@
       "ios"
     ]
   },
-  "repository": "github:apache/cordova-plugin-inappbrowser",
-  "bugs": "https://github.com/apache/cordova-plugin-inappbrowser/issues",
+  "repository": "github:shuizhongyueming/cordova-plugin-inappbrowser-adsense",
+  "bugs": "https://github.com/shuizhongyueming/cordova-plugin-inappbrowser-adsense/issues",
   "keywords": [
     "cordova",
     "in",
@@ -22,7 +22,8 @@
     "ecosystem:cordova",
     "cordova-android",
     "cordova-browser",
-    "cordova-ios"
+    "cordova-ios",
+    "adsense"
   ],
   "scripts": {
     "test": "npm run lint",
