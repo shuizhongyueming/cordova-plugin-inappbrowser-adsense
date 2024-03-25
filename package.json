@@ -1,6 +1,6 @@
 {
   "name": "cordova-plugin-inappbrowser-adsense",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Extend Cordova InAppBrowser Plugin with AdSense Display Support",
   "types": "./types/index.d.ts",
   "cordova": {
