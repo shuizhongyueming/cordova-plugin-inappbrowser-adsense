@@ -1268,7 +1268,7 @@ public class InAppBrowser extends CordovaPlugin {
             boolean useBeforeload = false;
             String errorMessage = null;
 
-            LOG.d(LOG_TAG, "shouldOverrideUrlLoading(String url, String method) url: " + url + ", method: " + method);
+            LOG.d(LOG_TAG, "shouldOverrideUrlLoading(String url, String method) url: " + url + ", method: " + method + ", useBeforeLoad: " + useBeforeload + ", waitForBeforeload: " + this.waitForBeforeload);
 
             if (beforeload.equals("yes") && method == null) {
                 useBeforeload = true;
@@ -1383,6 +1383,7 @@ public class InAppBrowser extends CordovaPlugin {
             if (useBeforeload) {
                 this.waitForBeforeload = true;
             }
+            LOG.d(LOG_TAG, "return shouldOverrideUrlLoading: " + override);
             return override;
         }
 
