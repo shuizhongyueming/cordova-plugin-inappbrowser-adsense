@@ -20,6 +20,7 @@ package org.apache.cordova.inappbrowser;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -62,6 +63,10 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
+import android.widget.Toast;
+import androidx.browser.customtabs.CustomTabsIntent;
+
+import com.google.android.gms.ads.MobileAds;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.Config;
@@ -78,6 +83,9 @@ import org.json.JSONObject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -99,6 +107,7 @@ public class InAppBrowser extends CordovaPlugin {
     private static final String LOAD_STOP_EVENT = "loadstop";
     private static final String LOAD_ERROR_EVENT = "loaderror";
     private static final String DOWNLOAD_EVENT = "download";
+    private static final String BACKBUTTON_EVENT = "backbutton";
     private static final String MESSAGE_EVENT = "message";
     private static final String CLEAR_ALL_CACHE = "clearcache";
     private static final String CLEAR_SESSION_CACHE = "clearsessioncache";
@@ -187,7 +196,7 @@ public class InAppBrowser extends CordovaPlugin {
                          */
                         Boolean shouldAllowNavigation = null;
                         if (url.startsWith("javascript:")) {
-                            shouldAllowNavigation = true;
+                            shouldAllowNavigation = false;
                         }
                         if (shouldAllowNavigation == null) {
                             try {
@@ -567,6 +576,22 @@ public class InAppBrowser extends CordovaPlugin {
     }
 
     /**
+     * handle the hardware back button press
+     */
+    public void hanldeBackbutton() {
+        LOG.d(LOG_TAG, "hanldeBackbutton is called");
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("type", BACKBUTTON_EVENT);
+            obj.put("url", this.inAppWebView.getUrl());
+
+            sendUpdate(obj, true);
+        } catch (JSONException ex) {
+            LOG.d(LOG_TAG, "Should never happen");
+        }
+    }
+
+    /**
      * Can the web browser go back?
      * @return boolean
      */
@@ -920,6 +945,10 @@ public class InAppBrowser extends CordovaPlugin {
                 inAppWebView = new WebView(cordova.getActivity());
                 inAppWebView.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
                 inAppWebView.setId(Integer.valueOf(6));
+
+                // Register the web view.
+                MobileAds.registerWebView(inAppWebView);
+
                 // File Chooser Implemented ChromeClient
                 inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView) {
                     public boolean onShowFileChooser (WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams)
@@ -1026,7 +1055,8 @@ public class InAppBrowser extends CordovaPlugin {
                 inAppWebView.getSettings().setUseWideViewPort(useWideViewPort);
                 // Multiple Windows set to true to mitigate Chromium security bug.
                 //  See: https://bugs.chromium.org/p/chromium/issues/detail?id=1083819
-                inAppWebView.getSettings().setSupportMultipleWindows(true);
+                // 不能开启这个，开启了，_blank 的链接的跳转，没法被 shouldOverrideUrlLoading 拦截
+                // inAppWebView.getSettings().setSupportMultipleWindows(true);
                 inAppWebView.requestFocus();
                 inAppWebView.requestFocusFromTouch();
 
@@ -1141,20 +1171,6 @@ public class InAppBrowser extends CordovaPlugin {
             this.waitForBeforeload = beforeload != null;
         }
 
-        /**
-         * Override the URL that should be loaded
-         *
-         * Legacy (deprecated in API 24)
-         * For Android 6 and below.
-         *
-         * @param webView
-         * @param url
-         */
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView webView, String url) {
-            return shouldOverrideUrlLoading(url, null);
-        }
 
         /**
          * Override the URL that should be loaded
@@ -1168,7 +1184,75 @@ public class InAppBrowser extends CordovaPlugin {
         @TargetApi(Build.VERSION_CODES.N)
         @Override
         public boolean shouldOverrideUrlLoading(WebView webView, WebResourceRequest request) {
-            return shouldOverrideUrlLoading(request.getUrl().toString(), request.getMethod());
+            // Determine whether to override the behavior of the URL.
+            // if (request.getUrl().getHost() != null) {
+            //     return false;
+            // }
+            LOG.d(LOG_TAG, "shouldOverrideUrlLoading(WebView, WebResourceRequest) request.getUrl(): " + request.getUrl() + ", host: " + request.getUrl().getHost());
+
+            // Handle custom URL schemes such as market:// by attempting to
+            // launch the corresponding application in a new intent.
+            if (!request.getUrl().getScheme().equals("http")
+                    && !request.getUrl().getScheme().equals("https")) {
+                LOG.d(LOG_TAG, "shouldOverrideUrlLoading(WebView, WebResourceRequest) block custom scheme: " + request.getUrl());
+                Intent intent = new Intent(Intent.ACTION_VIEW, request.getUrl());
+                if (intent.resolveActivity(cordova.getActivity().getPackageManager()) != null) {
+                    LOG.d(LOG_TAG, "start new intent for url: " + request.getUrl());
+                    cordova.getActivity().startActivity(intent);
+                } else {
+                    try {
+                        LOG.d(LOG_TAG, "there is no app that can handle this url: " + request.getUrl() + ", try to use custom tabs");
+                        Intent in = Intent.parseUri(request.getUrl().toString(), Intent.URI_INTENT_SCHEME);
+                        Uri fallbackUri = in.getData();
+                        if (fallbackUri != null) {
+                            CustomTabsIntent customTabsIntent = new CustomTabsIntent.Builder().build();
+                            LOG.d(LOG_TAG, "start custom tabs intent for url: " + fallbackUri);
+                            customTabsIntent.launchUrl(cordova.getActivity(), fallbackUri);
+                        } else {
+                            LOG.d(LOG_TAG, "can not parse fallback url from intent: " + request.getUrl());
+                        }
+                    } catch (URISyntaxException e) {
+                        LOG.e(LOG_TAG, "Error parsing url " + request.getUrl() + ":" + e.toString());
+                    } catch (ActivityNotFoundException e) {
+                        LOG.e(LOG_TAG, "Error launching activity for url " + request.getUrl() + ":" + e.toString());
+                        Toast.makeText(
+                                cordova.getActivity(),
+                                "Failed to load URL with scheme:" + request.getUrl().getScheme(),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+                return true;
+            }
+
+            String currentDomain;
+            try {
+                currentDomain = new URL(webView.getUrl()).getHost();
+            } catch (MalformedURLException exception) {
+                Toast.makeText(
+                        cordova.getActivity(),
+                        "Malformed URL",
+                        Toast.LENGTH_SHORT)
+                        .show();
+
+                LOG.d(LOG_TAG, "get domain from current webview failed, goto original logic, url: " + request.getUrl());
+                return shouldOverrideUrlLoading(request.getUrl().toString(), request.getMethod());
+            }
+            String targetDomain = request.getUrl().getHost();
+
+            // If the current domain equals the target domain, the
+            // assumption is the user is not navigating away from
+            // the site. Reload the URL within the existing web view.
+            if (currentDomain.equals(targetDomain)) {
+                LOG.d(LOG_TAG, "request url has same domain as current webview, goto original logic, url: " + request.getUrl());
+                return shouldOverrideUrlLoading(request.getUrl().toString(), request.getMethod());
+            }
+
+            // 3. User is navigating away from the site, open the URL in
+            // Custom Tabs to preserve the state of the web view.
+            LOG.d(LOG_TAG, "use custom tabs intent for url: " + request.getUrl());
+            CustomTabsIntent intent = new CustomTabsIntent.Builder().build();
+            intent.launchUrl(cordova.getActivity(), request.getUrl());
+            return true;
         }
 
         /**
@@ -1183,6 +1267,8 @@ public class InAppBrowser extends CordovaPlugin {
             boolean override = false;
             boolean useBeforeload = false;
             String errorMessage = null;
+
+            LOG.d(LOG_TAG, "shouldOverrideUrlLoading(String url, String method) url: " + url + ", method: " + method);
 
             if (beforeload.equals("yes") && method == null) {
                 useBeforeload = true;

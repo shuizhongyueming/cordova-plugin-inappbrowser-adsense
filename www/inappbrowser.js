@@ -34,7 +34,8 @@
             exit: channel.create('exit'),
             customscheme: channel.create('customscheme'),
             message: channel.create('message'),
-            download: channel.create('download')
+            download: channel.create('download'),
+            backbutton: channel.create('backbutton')
         };
     }
 

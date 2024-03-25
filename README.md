@@ -22,7 +22,7 @@ description: Open an in-app browser window.
 -->
 
 
-# cordova-plugin-inappbrowser
+# cordova-plugin-inappbrowser-adsense
 
 [![Android Testsuite](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/android.yml/badge.svg)](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/android.yml) [![Chrome Testsuite](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/chrome.yml/badge.svg)](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/chrome.yml) [![iOS Testsuite](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/ios.yml/badge.svg)](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/ios.yml) [![Lint Test](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/lint.yml/badge.svg)](https://github.com/apache/cordova-plugin-inappbrowser/actions/workflows/lint.yml)
 
@@ -74,6 +74,25 @@ simply hook `window.open` during initialization.  For example:
 ```xml
 <preference name="InAppBrowserStatusBarStyle" value="lightcontent" />
 ```
+- <b>Setup Webview</b>: bypass the check for the `APPLICATION_ID` for Mobile Ads SDK(see [https://developers.google.com/admob/android/browser/webview/api-for-ads#prerequisites](https://developers.google.com/admob/android/browser/webview/api-for-ads#prerequisites))
+```xml
+<config-file parent="./application" target="AndroidManifest.xml">
+    <meta-data android:name="android.max_aspect" android:value="5.0" />
+    <meta-data android:name="com.google.android.gms.ads.INTEGRATION_MANAGER" android:value="webview" />
+</config-file>
+```
+- <b>Support back event(Optional Android Only)</b>: (boolean, defaults to false) set to true to support the back event in the InAppBrowser.
+```xml
+<edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
+    <application android:enableOnBackInvokedCallback="true" />
+</edit-config>
+```
+
+## AdSense Ad Display Requirements
+
+With requirements described in [Set up WebView](https://developers.google.com/admob/android/browser/webview), the following `InAppBrowser` Options should be setted:
+- `mediaPlaybackRequiresUserAction` = `no`
+- `allowInlineMediaPlayback` = `yes`
 
 ## cordova.InAppBrowser.open
 
